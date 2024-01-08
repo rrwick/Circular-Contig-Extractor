@@ -166,3 +166,30 @@ def test_filter_by_size():
     assert filtered_contigs == [('1', 'ACGATC'), ('2', 'ACGATCAGC')]
     filtered_contigs = circular_contig_extractor.filter_by_size(contigs, 9, None)
     assert filtered_contigs == [('2', 'ACGATCAGC'), ('3', 'ACGATCAGCACT')]
+    filtered_contigs = circular_contig_extractor.filter_by_size(contigs, 100, 200)
+    assert filtered_contigs == []
+
+
+def test_filter_by_query_1():
+    graph_filename = file_dir() / 'graph_3.gfa'
+    query_filename = file_dir() / 'query.fasta'
+    contigs, _ = circular_contig_extractor.load_gfa(graph_filename)
+    matching_contigs = circular_contig_extractor.filter_by_query(contigs, query_filename, 0.1)
+    assert len(matching_contigs) == 1
+    assert matching_contigs[0][0] == '2'
+
+
+def test_filter_by_query_2():
+    graph_filename = file_dir() / 'graph_3.gfa'
+    query_filename = file_dir() / 'query.fasta'
+    contigs, _ = circular_contig_extractor.load_gfa(graph_filename)
+    matching_contigs = circular_contig_extractor.filter_by_query(contigs, query_filename, 0.00001)
+    assert len(matching_contigs) == 0
+
+
+def test_get_mash_distance():
+    fasta = file_dir() / 'query.fasta'
+    empty = file_dir() / 'empty_file'
+    assert circular_contig_extractor.get_mash_distance(fasta, fasta) == 0.0
+    with pytest.raises(SystemExit):
+        assert circular_contig_extractor.get_mash_distance(empty, empty)

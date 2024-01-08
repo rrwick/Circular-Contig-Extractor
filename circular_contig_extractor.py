@@ -92,6 +92,10 @@ def check_args(args):
         sys.exit('Error: --mash must be less than 1.0')
     if args.query is not None:
         check_file_exists(args.query)
+        query_seqs = list(iterate_fasta(args.query))
+        if not query_seqs:
+            sys.exit(f'Error: {args.query} contains no sequences')
+
 
 
 def load_gfa(filename):
