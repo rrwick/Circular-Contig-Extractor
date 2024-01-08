@@ -27,8 +27,12 @@ import pytest
 import tempfile
 
 
+def file_dir():
+    return pathlib.Path(__file__).resolve().parent / 'files'
+
+
 def test_compression_type_1():
-    filename = pathlib.Path(__file__).resolve().parent / 'compression' / 'uncompressed'
+    filename = file_dir() / 'uncompressed'
     compression_type = circular_contig_extractor.get_compression_type(filename)
     assert compression_type == 'plain'
     open_func = circular_contig_extractor.get_open_func(filename)
@@ -36,7 +40,7 @@ def test_compression_type_1():
 
 
 def test_compression_type_2():
-    filename = pathlib.Path(__file__).resolve().parent / 'compression' / 'gzipped'
+    filename = file_dir() / 'gzipped'
     compression_type = circular_contig_extractor.get_compression_type(filename)
     assert compression_type == 'gz'
     open_func = circular_contig_extractor.get_open_func(filename)
@@ -44,14 +48,14 @@ def test_compression_type_2():
 
 
 def test_compression_type_3():
-    filename = pathlib.Path(__file__).resolve().parent / 'compression' / 'bzip2ed'
+    filename = file_dir() / 'bzip2ed'
     with pytest.raises(SystemExit) as exit_message:
         circular_contig_extractor.get_compression_type(filename)
     assert 'cannot use bzip2' in str(exit_message.value)
 
 
 def test_compression_type_4():
-    filename = pathlib.Path(__file__).resolve().parent / 'compression' / 'zipped'
+    filename = file_dir() / 'zipped'
     with pytest.raises(SystemExit) as exit_message:
         circular_contig_extractor.get_compression_type(filename)
     assert 'cannot use zip' in str(exit_message.value)
@@ -71,19 +75,64 @@ def test_help_2():
 
 def test_check_args():
     Args = collections.namedtuple('Args', ['in_gfa', 'min', 'max', 'query', 'mash'])
-    circular_contig_extractor.check_args(Args(in_gfa='in', min=None, max=None, query=None, mash=0.1))
-    circular_contig_extractor.check_args(Args(in_gfa='in', min=100, max=None, query=None, mash=0.1))
-    circular_contig_extractor.check_args(Args(in_gfa='in', min=None, max=100, query=None, mash=0.1))
-    circular_contig_extractor.check_args(Args(in_gfa='in', min=None, max=None, query=None, mash=0.9))
+    check_args = circular_contig_extractor.check_args
+    check_args(Args(in_gfa='in', min=None, max=None, query=None, mash=0.1))
+    check_args(Args(in_gfa='in', min=100, max=None, query=None, mash=0.1))
+    check_args(Args(in_gfa='in', min=None, max=100, query=None, mash=0.1))
+    check_args(Args(in_gfa='in', min=None, max=None, query=None, mash=0.9))
     with pytest.raises(SystemExit):
-        circular_contig_extractor.check_args(Args(in_gfa='in', min=-100, max=None, query=None, mash=0.1))
+        check_args(Args(in_gfa='in', min=-100, max=None, query=None, mash=0.1))
     with pytest.raises(SystemExit):
-        circular_contig_extractor.check_args(Args(in_gfa='in', min=None, max=-100, query=None, mash=0.1))
+        check_args(Args(in_gfa='in', min=None, max=-100, query=None, mash=0.1))
     with pytest.raises(SystemExit):
-        circular_contig_extractor.check_args(Args(in_gfa='in', min=1000, max=100, query=None, mash=0.1))
+        check_args(Args(in_gfa='in', min=1000, max=100, query=None, mash=0.1))
     with pytest.raises(SystemExit):
-        circular_contig_extractor.check_args(Args(in_gfa='in', min=None, max=None, query=None, mash=2.0))
+        check_args(Args(in_gfa='in', min=None, max=None, query=None, mash=2.0))
+    with pytest.raises(SystemExit):
+        check_args(Args(in_gfa='in', min=None, max=None, query=None, mash=-0.1))
+    with pytest.raises(SystemExit):
+        check_args(Args(in_gfa='in', min=None, max=None, query=pathlib.Path('bad'), mash=0.5))
 
+
+def test_check_file_exists():
+    good = file_dir() / 'uncompressed'
+    bad = file_dir() / 'not_a_file'
+    directory = pathlib.Path(__file__).resolve().parent
+    circular_contig_extractor.check_file_exists(good)
+    with pytest.raises(SystemExit):
+        circular_contig_extractor.check_file_exists(bad)
+    with pytest.raises(SystemExit):
+        circular_contig_extractor.check_file_exists(directory)
+
+
+def test_load_gfa():
+    filename = file_dir() / 'graph_1.gfa'
+    contigs, links = circular_contig_extractor.load_gfa(filename)
+    assert len(contigs) == 3
+    assert len(links) == 3
+
+
+def test_find_circular_contigs_1():
+    filename = file_dir() / 'graph_1.gfa'
+    contigs, links = circular_contig_extractor.load_gfa(filename)
+    circular_contigs = circular_contig_extractor.find_circular_contigs(contigs, links)
+    assert len(circular_contigs) == 1
+    assert circular_contigs[0][0] == '2'
+
+
+def test_find_circular_contigs_2():
+    filename = file_dir() / 'graph_2.gfa'
+    contigs, links = circular_contig_extractor.load_gfa(filename)
+    circular_contigs = circular_contig_extractor.find_circular_contigs(contigs, links)
+    assert len(circular_contigs) == 0
+
+
+def test_trim_overlaps():
+    contigs = [('1', 'ACGATCAGCACT', '0M'),
+               ('2', 'ACGATCAGCACT', '5M'),
+               ('3', 'ACGATCAGCACT', '*')]
+    trimmed_contigs = circular_contig_extractor.trim_overlaps(contigs)
+    assert trimmed_contigs == [('1', 'ACGATCAGCACT'), ('2', 'ACGATCA'), ('3', 'ACGATCAGCACT')]
 
 def test_get_overlap_from_cigar():
     assert circular_contig_extractor.get_overlap_from_cigar('0M') == 0
@@ -101,3 +150,19 @@ def test_trim_seq():
     assert circular_contig_extractor.trim_seq('ACACGACTACG', 3) == 'ACACGACT'
     assert circular_contig_extractor.trim_seq('ACACGACTACG', 4) == 'ACACGAC'
     assert circular_contig_extractor.trim_seq('ACACGACTACG', 5) == 'ACACGA'
+
+
+def test_filter_by_size():
+    contigs = [('1', 'ACGATC'), ('2', 'ACGATCAGC'), ('3', 'ACGATCAGCACT')]
+    filtered_contigs = circular_contig_extractor.filter_by_size(contigs, None, None)
+    assert filtered_contigs == [('1', 'ACGATC'), ('2', 'ACGATCAGC'), ('3', 'ACGATCAGCACT')]
+    filtered_contigs = circular_contig_extractor.filter_by_size(contigs, 0, 100)
+    assert filtered_contigs == [('1', 'ACGATC'), ('2', 'ACGATCAGC'), ('3', 'ACGATCAGCACT')]
+    filtered_contigs = circular_contig_extractor.filter_by_size(contigs, 8, 10)
+    assert filtered_contigs == [('2', 'ACGATCAGC')]
+    filtered_contigs = circular_contig_extractor.filter_by_size(contigs, 9, 9)
+    assert filtered_contigs == [('2', 'ACGATCAGC')]
+    filtered_contigs = circular_contig_extractor.filter_by_size(contigs, None, 9)
+    assert filtered_contigs == [('1', 'ACGATC'), ('2', 'ACGATCAGC')]
+    filtered_contigs = circular_contig_extractor.filter_by_size(contigs, 9, None)
+    assert filtered_contigs == [('2', 'ACGATCAGC'), ('3', 'ACGATCAGCACT')]
