@@ -16,18 +16,17 @@ see <https://www.gnu.org/licenses/>.
 """
 
 import argparse
-import functools
+import collections
 import gzip
-import multiprocessing
 import os
 import pathlib
-import random
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
 
-__version__ = '0.0.0'
+__version__ = '0.1.0'
 
 
 def get_arguments(args):
@@ -64,13 +63,20 @@ def get_arguments(args):
 def main(args=None):
     args = get_arguments(args)
     check_args(args)
-    segments, links = load_gfa(args.in_gfa)
-    segments = find_circular_segments(segments, links)
-    segments = trim_overlaps(segments)
+    contigs, links = load_gfa(args.in_gfa)
+    contigs = find_circular_contigs(contigs, links)
+    if not contigs:
+        sys.exit()
+    contigs = trim_overlaps(contigs)
     if args.min is not None or args.max is not None:
-        segments = filter_by_size(segments, args.min, args.max)
+        contigs = filter_by_size(contigs, args.min, args.max)
+        if not contigs:
+            sys.exit()
     if args.query is not None:
-        segments = filter_by_query(segments, args.query, args.mash)
+        contigs = filter_by_query(contigs, args.query, args.mash)
+        if not contigs:
+            sys.exit()
+    output_contigs(contigs)
 
 
 def check_args(args):
@@ -90,21 +96,21 @@ def check_args(args):
 
 def load_gfa(filename):
     print(f'\nLoading {filename}:', file=sys.stderr)
-    segments, links = [], []
+    contigs, links = [], []
     with get_open_func(filename)(filename, 'rt') as gfa_file:
         for line in gfa_file:
             parts = line.rstrip('\n').split('\t')
             if parts[0] == 'S':
-                segments.append(parts[1:3])
+                contigs.append(parts[1:3])
             if parts[0] == 'L':
                 links.append(parts[1:6])
-    print(f'  {len(segments)} segment{"" if len(segments) == 1 else "s"}', file=sys.stderr)
+    print(f'  {len(contigs)} contig{"" if len(contigs) == 1 else "s"}', file=sys.stderr)
     print(f'  {len(links)} link{"" if len(links) == 1 else "s"}', file=sys.stderr)
-    return segments, links
+    return contigs, links
 
 
-def find_circular_segments(segments, links):
-    print(f'\nFinding circular segments:', file=sys.stderr)
+def find_circular_contigs(contigs, links):
+    print(f'\nFinding circular contigs:', file=sys.stderr)
     circular_links = {}
     for seg_a, strand_a, seg_b, strand_b, cigar in links:
         if seg_a == seg_b and strand_a == strand_b:
@@ -113,59 +119,118 @@ def find_circular_segments(segments, links):
         if seg_a != seg_b or strand_a != strand_b:
             circular_links.pop(seg_a, None)
             circular_links.pop(seg_b, None)
-    circular_segments = []
-    for name, seq in segments:
+    circular_contigs = []
+    for name, seq in contigs:
         if name in circular_links:
-            circular_segments.append((name, seq, circular_links[name]))
+            circular_contigs.append((name, seq, circular_links[name]))
             print(f'  {name}: {len(seq):,} bp', file=sys.stderr)
-    return circular_segments
+    if not circular_contigs:
+        print('  no circular contigs found\n', file=sys.stderr)
+    return circular_contigs
 
 
-def trim_overlaps(segments):
+def trim_overlaps(contigs):
     print(f'\nTrimming overlaps:', file=sys.stderr)
-    trimmed_segments = []
-    for name, seq, cigar in segments:
-        pass
-        # TODO
-        # TODO
-        # TODO
-        # TODO
-        # TODO
-        # TODO
-    return trimmed_segments
+    trimmed_contigs = []
+    for name, seq, cigar in contigs:
+        print(f'  {name}: ', file=sys.stderr, end='')
+        overlap = get_overlap_from_cigar(cigar)
+        if overlap is None:
+            print(f'cannot determine overlap', file=sys.stderr)
+        elif overlap == 0:
+            print(f'no overlap', file=sys.stderr)
+        else:
+            print(f'trimming {overlap} bp', file=sys.stderr)
+        trimmed_contigs.append((name, trim_seq(seq, overlap)))
+    return trimmed_contigs
 
 
-def filter_by_size(segments, min_size, max_size):
+def get_overlap_from_cigar(cigar):
+    match = re.match(r'^(\d+)M$', cigar)
+    if match:
+        return int(match.group(1))
+    else:
+        return None
+
+
+def trim_seq(seq, trim_amount):
+    if trim_amount is None or trim_amount == 0:
+        return seq
+    else:
+        return seq[:-trim_amount]
+
+
+def filter_by_size(contigs, min_size, max_size):
     print(f'\nFiltering by size:', file=sys.stderr)
     if min_size is not None:
-        segments = [s for s in segments if len(s[1]) >= min_size]
+        contigs = [s for s in contigs if len(s[1]) >= min_size]
     if max_size is not None:
-        segments = [s for s in segments if len(s[1]) <= max_size]
-    for name, seq, _ in segments:
+        contigs = [s for s in contigs if len(s[1]) <= max_size]
+    for name, seq in contigs:
         print(f'  {name}: {len(seq):,} bp', file=sys.stderr)
-    return segments
+    if not contigs:
+        print('  no contigs satisfy size parameters\n', file=sys.stderr)
+    return contigs
 
 
-def filter_by_query(segments, query_filename, mash_dist):
+def filter_by_query(contigs, query_filename, mash_threshold):
     print(f'\nFiltering by query sequence(s):', file=sys.stderr)
-    for query_name, query_seq in iterate_fasta(query_filename):
-        print(f'  {query_name}', file=sys.stderr)
-    # TODO
-    # TODO
-    # TODO
-    # TODO
-    # TODO
-    # TODO
-    # TODO
-    # TODO
-    # TODO
-    # TODO
-    return segments
+    mash_distances = get_all_mash_distances(contigs, query_filename)
+    closest_distances = {contig_name: sorted(distances)[0]
+                         for contig_name, distances in mash_distances.items()}
+    matching_contigs = []
+    for name, seq in contigs:
+        closest_distance, closest_query = closest_distances[name]
+        if closest_distance <= mash_threshold:
+            matching_contigs.append((name, seq))
+            print(f'  {name}: {closest_distance:.5f} Mash distance to {closest_query}', file=sys.stderr)
+    if not matching_contigs:
+        print('  no contigs match query sequence(s)\n', file=sys.stderr)
+    return matching_contigs
 
 
+def get_all_mash_distances(contigs, query_filename):
+    mash_distances = collections.defaultdict(list)
+    with tempfile.TemporaryDirectory() as temp_dir:
+        query_fasta = pathlib.Path(temp_dir) / 'query.fasta'
+        contig_fasta = pathlib.Path(temp_dir) / 'contig.fasta'
+        for query_name, query_seq in iterate_fasta(query_filename):
+            write_fasta(query_name, query_seq, query_fasta)
+            for contig_name, contig_seq in contigs:
+                write_fasta(contig_name, contig_seq, contig_fasta)
+                dist = get_mash_distance(query_fasta, contig_fasta)
+                mash_distances[contig_name].append((dist, query_name))
+    return mash_distances
 
 
+def write_fasta(name, seq, filename):
+    with open(filename, 'wt') as f:
+        f.write(f'>{name}\n')
+        f.write(f'{seq}\n')
 
+
+def get_mash_distance(fasta_a, fasta_b):
+    mash_command = ['mash', 'dist', fasta_a, fasta_b]
+    distances = []
+    p = subprocess.Popen(mash_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    stderr = p.stderr.read().strip()
+    for line in p.stdout:
+        parts = line.split('\t')
+        distance = float(parts[2])
+        distances.append(distance)
+    if len(distances) != 1:
+        sys.exit(f'Error: mash dist did not run successfully:\n{stderr}')
+    assert len(distances) == 1
+    return distances[0]
+
+
+def output_contigs(contigs):
+    print(f'\nOutputting contigs:', file=sys.stderr)
+    for name, seq in contigs:
+        print(f'  {name}: {len(seq):,} bp', file=sys.stderr)
+        print(f'>{name}')
+        print(seq)
+    print('', file=sys.stderr)
 
 
 def iterate_fasta(filename):
@@ -192,12 +257,6 @@ def iterate_fasta(filename):
             name_parts = name.split(maxsplit=1)
             contig_name = name_parts[0]
             yield contig_name, ''.join(sequence)
-
-
-
-
-
-
 
 
 def check_file_exists(filename):
@@ -329,10 +388,6 @@ def get_colours_from_tput():
         return int(subprocess.check_output(['tput', 'colors']).decode().strip())
     except (ValueError, subprocess.CalledProcessError, FileNotFoundError, AttributeError):
         return 1
-
-
-def get_default_thread_count():
-    return min(multiprocessing.cpu_count(), 16)
 
 
 if __name__ == '__main__':

@@ -83,3 +83,21 @@ def test_check_args():
         circular_contig_extractor.check_args(Args(in_gfa='in', min=1000, max=100, query=None, mash=0.1))
     with pytest.raises(SystemExit):
         circular_contig_extractor.check_args(Args(in_gfa='in', min=None, max=None, query=None, mash=2.0))
+
+
+def test_get_overlap_from_cigar():
+    assert circular_contig_extractor.get_overlap_from_cigar('0M') == 0
+    assert circular_contig_extractor.get_overlap_from_cigar('123M') == 123
+    assert circular_contig_extractor.get_overlap_from_cigar('abc') is None
+    assert circular_contig_extractor.get_overlap_from_cigar('2M1D4M') is None
+    assert circular_contig_extractor.get_overlap_from_cigar('') is None
+
+
+def test_trim_seq():
+    assert circular_contig_extractor.trim_seq('ACACGACTACG', None) == 'ACACGACTACG'
+    assert circular_contig_extractor.trim_seq('ACACGACTACG', 0) == 'ACACGACTACG'
+    assert circular_contig_extractor.trim_seq('ACACGACTACG', 1) == 'ACACGACTAC'
+    assert circular_contig_extractor.trim_seq('ACACGACTACG', 2) == 'ACACGACTA'
+    assert circular_contig_extractor.trim_seq('ACACGACTACG', 3) == 'ACACGACT'
+    assert circular_contig_extractor.trim_seq('ACACGACTACG', 4) == 'ACACGAC'
+    assert circular_contig_extractor.trim_seq('ACACGACTACG', 5) == 'ACACGA'
