@@ -35,19 +35,19 @@ def get_arguments(args):
 
     positional_args = parser.add_argument_group('Positional arguments')
     positional_args.add_argument('input_gfa', type=pathlib.Path,
-                                 help='Input assembly GFA file')
+                                 help='Input assembly graph in GFA format')
 
     clustering_args = parser.add_argument_group('Contig size settings')
     clustering_args.add_argument('--min', type=int, default=None,
-                                 help='Minimum acceptable contig size in bp (default: no minimum size)')
+                                 help='Minimum contig size in bp (default: no minimum size)')
     clustering_args.add_argument('--max', type=int, default=None,
-                                 help='Maximum acceptable contig size in bp (default: no maximum size)')
+                                 help='Maximum contig size in bp (default: no maximum size)')
 
     clustering_args = parser.add_argument_group('Query settings')
     clustering_args.add_argument('--query', type=pathlib.Path, default=None,
                                  help='Query reference sequence(s) in FASTA format (default: none)')
     clustering_args.add_argument('--mash', type=float, default=0.1,
-                                 help='Maximum acceptable Mash distance to query sequence')
+                                 help='Maximum Mash distance to query sequence')
 
     other_args = parser.add_argument_group('Other')
     other_args.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS,
