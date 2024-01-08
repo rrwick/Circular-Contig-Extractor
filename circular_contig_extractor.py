@@ -34,7 +34,7 @@ def get_arguments(args):
                       formatter_class=MyHelpFormatter)
 
     positional_args = parser.add_argument_group('Positional arguments')
-    positional_args.add_argument('in_gfa', type=pathlib.Path,
+    positional_args.add_argument('input_gfa', type=pathlib.Path,
                                  help='Input assembly GFA file')
 
     clustering_args = parser.add_argument_group('Contig size settings')
@@ -63,7 +63,7 @@ def get_arguments(args):
 def main(args=None):
     args = get_arguments(args)
     check_args(args)
-    contigs, links = load_gfa(args.in_gfa)
+    contigs, links = load_gfa(args.input_gfa)
     contigs = find_circular_contigs(contigs, links)
     if not contigs:
         sys.exit()
