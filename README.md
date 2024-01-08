@@ -1,6 +1,26 @@
 # Circular Contig Extractor
 
-This repo contains a standalone Python script ([`circular_contig_extractor.py`](circular_contig_extractor.py)) to extract complete circular contigs from a bacterial genome assembly graph.
+This repo contains a standalone Python script ([`circular_contig_extractor.py`](circular_contig_extractor.py)) which takes a bacterial genome assembly graph as input and extracts complete circular contigs that assembled separately from the rest of the genome. Circular contigs can be filtered by size and/or by [Mash-distance](https://mash.readthedocs.io/en/latest/tutorials.html#simple-distance-estimation) to a query sequence.
+
+
+
+## Short-read assembly graph example
+
+If given this short-read assembly graph as input, `circular_contig_extractor.py` will extract the three contigs (all small plasmids) highlighted in blue:
+<p align="center"><picture><source srcset="images/short-read_example-dark.png" media="(prefers-color-scheme: dark)"><img src="images/short-read_example.png" alt="Short-read assembly graph example" width="50%"></picture></p>
+
+
+
+## Long-read assembly graph example
+
+If given this long-read assembly graph as input, `circular_contig_extractor.py` will extract the 11 contigs (some chromosomes, some plasmids) highlighted in blue:
+<p align="center"><picture><source srcset="images/long-read_example-dark.png" media="(prefers-color-scheme: dark)"><img src="images/long-read_example.png" alt="Long-read assembly graph example" width="60%"></picture></p>
+
+
+
+## Important note
+
+When using `circular_contig_extractor.py` to look for chromosomes or plasmids, false-negative results are common! Sometimes replicons do not cleanly assemble into separate circular contigs, and this script will ignore anything that is not separate and circular. For example, if you are using it to extract small plasmids and get no result, this does not mean that the input genome definitely has no small plasmids. There may be a small plasmid that shares sequence with another replicon, causing it to tangle up in the assembly graph.
 
 
 
@@ -33,16 +53,69 @@ If you'd like to double-check that everything works as intended, you can run thi
 
 ## Method
 
+`circular_contig_extractor.py` loads a GFA and does the following steps:
+1. Filter for circular contigs. To count as circular, there needs to be a same-strand link connecting the contig to itself and no links to any other contig. When visualised in [Bandage](https://github.com/rrwick/Bandage), circular contigs are separate from the rest of the graph (are their own [connected component](https://en.wikipedia.org/wiki/Component_(graph_theory))) and form a loop.
+2. Trim off any overlap. If the circularising link has a no-gap [CIGAR string](https://drive5.com/usearch/manual/cigar.html), then the overlapping bases are removed from the end of the contig to produce an overlap-free sequence. This is particularly relevant for SPAdes assemblies which contain overlaps.
+3. If `--min` and/or `--max` were used, filter on contig sizes.
+4. If `--query` was used, filter on Mash distances. Each sequence in the given FASTA file is considered a separate query, and contigs will pass the filter if they are sufficiently close to any of the queries. For example, you could put two different plasmid sequences in a file called `plasmids.fasta`, call the script with `--query plasmids.fasta`, and any circular contigs which matches either of the plasmid sequences will be included in the output.
 
 
 
 ## Quick usage
 
+`circular_contig_extractor.py` takes [GFA files](https://gfa-spec.github.io/GFA-spec/GFA1.html) as input, such as those made by [SPAdes](https://github.com/ablab/spades) or [Unicycler](https://github.com/rrwick/Unicycler). It outputs to stdout in FASTA format.
+
+Get all circular contigs from an assembly graph:
+```
+circular_contig_extractor.py assembly.gfa > circular_contigs.fasta
+```
+
+Get complete chromosomes ranging 1+ Mbp in size:
+```
+circular_contig_extractor.py --min 1000000 assembly.gfa > small_plasmids.fasta
+```
+
+Get complete small plasmids ranging from 1–20 kbp in size:
+```
+circular_contig_extractor.py --min 1000 --max 10000 assembly.gfa > small_plasmids.fasta
+```
+
+Get circular contigs that closely match a query sequence:
+```
+circular_contig_extractor.py --query query.fasta --mash 0.01 assembly.gfa > close_matches.fasta
+```
+
+Get circular contigs that distantly match a query sequence:
+```
+circular_contig_extractor.py --query query.fasta --mash 0.2 assembly.gfa > distant_matches.fasta
+```
 
 
 
 ## Full usage
 
+```
+usage: circular_contig_extractor.py [--min MIN] [--max MAX] [--query QUERY] [--mash MASH]
+                                    [-h] [--version]
+                                    input_gfa
+
+Circular Contig Extractor
+
+Positional arguments:
+  input_gfa      Input assembly graph in GFA format
+
+Contig size settings:
+  --min MIN      Minimum contig size in bp (default: no minimum size)
+  --max MAX      Maximum contig size in bp (default: no maximum size)
+
+Query settings:
+  --query QUERY  Query reference sequence(s) in FASTA format (default: none)
+  --mash MASH    Maximum Mash distance to query sequence
+
+Other:
+  -h, --help     Show this help message and exit
+  --version      Show program's version number and exit
+```
 
 
 
