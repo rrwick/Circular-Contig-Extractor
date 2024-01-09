@@ -76,7 +76,7 @@ As you can see in the GFA, circularising links can be on the positive strand (c1
 Given this short-read bacterial genome assembly graph as input, `circular_contig_extractor.py` will extract the three contigs (all small plasmids) highlighted in blue:
 <p align="center"><picture><source srcset="images/short-read_example-dark.png" media="(prefers-color-scheme: dark)"><img src="images/short-read_example.png" alt="Short-read assembly graph example" width="45%"></picture></p>
 
-In a short-read bacterial genome assembly graph, most (but not all) small plasmids will assemble to circular contigs. Conversely, most (but not all) large plasmids will fail to assemble to circular contigs. This example has a large plasmid at the bottom-left made of six non-circular contigs.
+In short-read bacterial genome assembly graphs, most (but not all) small plasmids will assemble to circular contigs. Conversely, most (but not all) large plasmids will fail to assemble to circular contigs. This example has a large plasmid at the bottom-left made of six non-circular contigs.
 
 
 ### Long-read example
@@ -135,7 +135,7 @@ If you'd like to double-check that everything works as intended, you can run thi
 
 ## Quick usage
 
-`circular_contig_extractor.py` takes [GFA files](https://gfa-spec.github.io/GFA-spec/GFA1.html) as input, such as those made by [SPAdes](https://github.com/ablab/spades) or [Unicycler](https://github.com/rrwick/Unicycler). It outputs to stdout in FASTA format.
+`circular_contig_extractor.py` take a [GFA file](https://gfa-spec.github.io/GFA-spec/GFA1.html) as input, such as those made by [SPAdes](https://github.com/ablab/spades) or [Unicycler](https://github.com/rrwick/Unicycler). It outputs to stdout in FASTA format.
 
 Get all circular contigs from an assembly graph:
 ```
