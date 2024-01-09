@@ -1,6 +1,6 @@
 # Circular Contig Extractor
 
-This repo contains a Python script ([`circular_contig_extractor.py`](circular_contig_extractor.py)) which takes a bacterial genome assembly graph as input and extracts complete circular contigs that assembled separately from the rest of the genome. Circular contigs can be filtered by size and/or by [Mash-distance](https://mash.readthedocs.io/en/latest/tutorials.html#simple-distance-estimation) to a query sequence.
+This repo contains a Python script ([`circular_contig_extractor.py`](circular_contig_extractor.py)) which takes a GFA assembly graph as input and extracts complete circular contigs. Circular contigs can be filtered by size and/or by [Mash-distance](https://mash.readthedocs.io/en/latest/tutorials.html#simple-distance-estimation) to a query sequence.
 
 
 
@@ -22,11 +22,16 @@ This repo contains a Python script ([`circular_contig_extractor.py`](circular_co
 
 ### Toy example
 
-This toy assembly graph has nine contigs, three of which would be considered circular by `circular_contig_extractor.py` and six of which would not (prefixed with **c** for 'circular' and **n** for 'not').
+This toy assembly graph has nine contigs, three of which `circular_contig_extractor.py` would consider circular (prefixed with **c**) by and six of which it would not (prefixed with **n**).
 
-```
-S	c1	AATATGAAAGGGTGTTGGGTATTCGCGGGTACACG
-S	c2	TCATTTCTTCAA
+<p align="center"><picture><source srcset="images/toy_example-dark.png" media="(prefers-color-scheme: dark)"><img src="images/toy_example.png" alt="Toy assembly graph example" width="60%"></picture></p>
+
+<details>
+<summary><b>GFA input</b></summary>
+<figure>
+<pre>
+<code>S	c1	AATATGAAAGGGTGTTGGGTATTCGCGGGTACACG
+S	c2	TCATTTCTTTCA
 S	c3	TGTGA
 S	n1	TCTTGCAACTTCATGAGGT
 S	n2	ACATTTTCTTCATGGG
@@ -35,7 +40,7 @@ S	n4	ACGTGCTTGGGACCTAGCCAATGAT
 S	n5	TACCA
 S	n6	CTGTC
 L	c1	+	c1	+	0M
-L	c2	-	c2	-	0M
+L	c2	-	c2	-	3M
 L	c3	+	c3	+	0M
 L	c3	-	c3	-	0M
 L	n2	+	n3	+	0M
@@ -43,16 +48,33 @@ L	n3	+	n2	+	0M
 L	n4	+	n4	+	0M
 L	n4	+	n5	+	0M
 L	n6	+	n6	+	0M
-L	n6	+	n6	-	0M
-```
+L	n6	+	n6	-	0M</code>
+</pre>
+</figure>
+</details>
 
-<p align="center"><picture><source srcset="images/toy_example-dark.png" media="(prefers-color-scheme: dark)"><img src="images/toy_example.png" alt="Toy assembly graph example" width="60%"></picture></p>
+
+<details>
+<summary><b>FASTA output</b></summary>
+<figure>
+<pre>
+<code>>c1
+AATATGAAAGGGTGTTGGGTATTCGCGGGTACACG
+>c2
+TCATTTCTT
+>c3
+TGTGA</code>
+</pre>
+</figure>
+</details>
+
+As you can see in the GFA, circularising links can be on the positive strand (c1), negative strand (c2) or both (c3). Any other links will render a contig non-circular. If a circularising link has overlap (c2), then that overlap will be trimmed off in the output.
 
 
 
 ### Short-read example
 
-Given this short-read assembly graph as input, `circular_contig_extractor.py` will extract the three contigs (all small plasmids) highlighted in blue:
+Given this short-read bacterial genome assembly graph as input, `circular_contig_extractor.py` will extract the three contigs (all small plasmids) highlighted in blue:
 <p align="center"><picture><source srcset="images/short-read_example-dark.png" media="(prefers-color-scheme: dark)"><img src="images/short-read_example.png" alt="Short-read assembly graph example" width="45%"></picture></p>
 
 
@@ -66,7 +88,7 @@ Given this long-read plate-sweep assembly graph as input, `circular_contig_extra
 
 ## Important note
 
-When using `circular_contig_extractor.py` to look for chromosomes or plasmids, false-negative results are common! Sometimes replicons do not cleanly assemble into separate circular contigs, and this script will ignore anything that is not separate and circular. For example, if you are using it to extract small plasmids and get no result, this does not mean that the input genome definitely has no small plasmids. There may be a small plasmid that shares sequence with another replicon, causing it to tangle up in the assembly graph.
+When using `circular_contig_extractor.py` to look for chromosomes or plasmids, false-negative results are common! Sometimes replicons do not cleanly assemble into separate circular contigs, and this script will ignore anything that is not separate and circular. For example, if you are using it to extract small plasmids and get no result, this does not mean that the input genome definitely has no small plasmids.
 
 
 
@@ -100,10 +122,10 @@ If you'd like to double-check that everything works as intended, you can run thi
 ## Method
 
 `circular_contig_extractor.py` loads a GFA and does the following steps:
-1. Filter for circular contigs. To count as circular, there needs to be a same-strand link connecting the contig to itself and no links to any other contig. When visualised in [Bandage](https://github.com/rrwick/Bandage), circular contigs are separate from the rest of the graph (are their own [connected component](https://en.wikipedia.org/wiki/Component_(graph_theory))) and form a loop.
-2. Trim off any overlap. If the circularising link has a no-gap [CIGAR string](https://drive5.com/usearch/manual/cigar.html), then the overlapping bases are removed from the end of the contig to produce an overlap-free sequence. This is particularly relevant for SPAdes assemblies which contain overlaps.
+1. Filter for circular contigs. To count as circular, there needs to be a same-strand link connecting the contig to itself and no other links. When visualised in [Bandage](https://github.com/rrwick/Bandage), circular contigs are separate from the rest of the graph (are their own [connected component](https://en.wikipedia.org/wiki/Component_(graph_theory))) and form a simple loop.
+2. Trim off any overlap. If the circularising link has a non-zero no-gap [CIGAR string](https://drive5.com/usearch/manual/cigar.html) (e.g. `55M`), then the overlapping bases are removed from the end of the contig to produce an overlap-free sequence. This is particularly relevant for SPAdes assemblies which contain overlaps.
 3. If `--min` and/or `--max` were used, filter on contig sizes.
-4. If `--query` was used, filter on Mash distances. Each sequence in the given FASTA file is considered a separate query, and contigs will pass the filter if they are sufficiently close to any of the queries. For example, you could put two different plasmid sequences in a file called `plasmids.fasta`, call the script with `--query plasmids.fasta`, and any circular contigs which matches either of the plasmid sequences will be included in the output.
+4. If `--query` was used, filter on Mash distances. Each sequence in the given FASTA file is considered a separate query, and contigs will pass the filter if they are sufficiently close to any of the queries. For example, you could put two different plasmid sequences in a file called `plasmids.fasta`, call the script with `--query plasmids.fasta`, and any circular contig which matches either of the plasmid sequences will be included in the output.
 
 
 
