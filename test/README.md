@@ -1,8 +1,8 @@
 # Circular Contig Extractor tests
 
-Circular Contig Extractor comes with a few automated tests to help with development and spotting bugs. You'll need [pytest](https://docs.pytest.org/en/latest/) installed to run them.
+`circular_contig_extractor.py` comes with a few automated tests to help with development and spotting bugs. You'll need [pytest](https://docs.pytest.org/en/latest/) installed to run them.
 
-To run the tests, execute this command from Circular Contig Extractor's root directory:
+To run the tests, execute this command from the repo's root directory:
 ```bash
 python3 -m pytest
 ```

@@ -82,7 +82,7 @@ In a short-read bacterial genome assembly graph, most (but not all) small plasmi
 ### Long-read example
 
 Given this long-read plate-sweep assembly graph as input, `circular_contig_extractor.py` will extract the 11 contigs (some chromosomes, some plasmids) highlighted in blue:
-<p align="center"><picture><source srcset="images/long-read_example-dark.png" media="(prefers-color-scheme: dark)"><img src="images/long-read_example.png" alt="Long-read assembly graph example" width="60%"></picture></p>
+<p align="center"><picture><source srcset="images/long-read_example-dark.png" media="(prefers-color-scheme: dark)"><img src="images/long-read_example.png" alt="Long-read assembly graph example" width="65%"></picture></p>
 
 
 
@@ -96,13 +96,13 @@ When using `circular_contig_extractor.py` to look for chromosomes or plasmids, f
 
 You'll need [Python](https://www.python.org/) 3.8 or later to run `circular_contig_extractor.py`. It's a standalone script and has no Python package dependencies (i.e. it only uses the standard library).
 
-There is one external dependency, [Mash](https://github.com/marbl/Mash), which you'll need installed and callable on your command line. If you can run `mash sketch -h` and `mash dist -h` without getting an error, you should be good to go! Note that if you aren't using the `--query` option (see method below), then the Mash requirement does not apply.
+There is one external dependency, [Mash](https://github.com/marbl/Mash), which you'll need installed and callable on your command line. If you can run `mash dist -h` without getting an error, you should be good to go! Note that if you aren't using the `--query` option (see method below), then the Mash requirement does not apply.
 
 
 
 ## Installation
 
-Since Circular Contig Extractor is a single script, no installation is required. You can simply clone it and run it:
+Since `circular_contig_extractor.py` is a single script, no installation is required. You can simply clone it and run it:
 ```bash
 git clone https://github.com/rrwick/Circular-Contig-Extractor
 Circular-Contig-Extractor/circular_contig_extractor.py --help
@@ -122,10 +122,14 @@ If you'd like to double-check that everything works as intended, you can run thi
 ## Method
 
 `circular_contig_extractor.py` loads a GFA and does the following steps:
-1. Filter for circular contigs. To count as circular, there needs to be a same-strand link connecting the contig to itself and no other links. When visualised in [Bandage](https://github.com/rrwick/Bandage), circular contigs are separate from the rest of the graph (are their own [connected component](https://en.wikipedia.org/wiki/Component_(graph_theory))) and form a simple loop.
-2. Trim off any overlap. If the circularising link has a non-zero no-gap [CIGAR string](https://drive5.com/usearch/manual/cigar.html) (e.g. `55M`), then the overlapping bases are removed from the end of the contig to produce an overlap-free sequence. This is particularly relevant for SPAdes assemblies which contain overlaps.
-3. If `--min` and/or `--max` were used, filter on contig sizes.
-4. If `--query` was used, filter on Mash distances. Each sequence in the given FASTA file is considered a separate query, and contigs will pass the filter if they are sufficiently close to any of the queries. For example, you could put two different plasmid sequences in a file called `plasmids.fasta`, call the script with `--query plasmids.fasta`, and any circular contig which matches either of the plasmid sequences will be included in the output.
+* Filter for circular contigs.
+  * To count as circular, there needs to be a same-strand link connecting the contig to itself and no other links.
+  * When visualised in [Bandage](https://github.com/rrwick/Bandage), circular contigs are separate from the rest of the graph (are their own [connected component](https://en.wikipedia.org/wiki/Component_(graph_theory))) and form a simple loop.
+* Trim off any overlap. If the circularising link has a non-zero gapless [CIGAR string](https://drive5.com/usearch/manual/cigar.html) (e.g. `55M`), then the overlapping bases are removed from the end of the contig to produce an overlap-free sequence. This is particularly relevant for SPAdes assemblies which contain overlaps.
+* If `--min` and/or `--max` were used, filter on contig sizes.
+* If `--query` was used, filter on Mash distances.
+  * Each sequence in the query FASTA file is considered a separate query, and contigs will pass the filter if they are sufficiently close to any of the queries.
+  * For example, you could put two different plasmid sequences in a file called `plasmids.fasta`, call the script with `--query plasmids.fasta`, and any circular contig which matches either of the plasmid sequences will be included in the output.
 
 
 
@@ -138,12 +142,12 @@ Get all circular contigs from an assembly graph:
 circular_contig_extractor.py assembly.gfa > circular_contigs.fasta
 ```
 
-Get complete chromosomes ranging 1+ Mbp in size:
+Get complete chromosomes 1 Mbp in size or larger:
 ```
 circular_contig_extractor.py --min 1000000 assembly.gfa > small_plasmids.fasta
 ```
 
-Get complete small plasmids ranging from 1–20 kbp in size:
+Get complete small plasmids ranging from 1–10 kbp in size:
 ```
 circular_contig_extractor.py --min 1000 --max 10000 assembly.gfa > small_plasmids.fasta
 ```
