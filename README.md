@@ -1,19 +1,65 @@
 # Circular Contig Extractor
 
-This repo contains a standalone Python script ([`circular_contig_extractor.py`](circular_contig_extractor.py)) which takes a bacterial genome assembly graph as input and extracts complete circular contigs that assembled separately from the rest of the genome. Circular contigs can be filtered by size and/or by [Mash-distance](https://mash.readthedocs.io/en/latest/tutorials.html#simple-distance-estimation) to a query sequence.
+This repo contains a Python script ([`circular_contig_extractor.py`](circular_contig_extractor.py)) which takes a bacterial genome assembly graph as input and extracts complete circular contigs that assembled separately from the rest of the genome. Circular contigs can be filtered by size and/or by [Mash-distance](https://mash.readthedocs.io/en/latest/tutorials.html#simple-distance-estimation) to a query sequence.
 
 
 
-## Short-read assembly graph example
+## Table of contents
 
-If given this short-read assembly graph as input, `circular_contig_extractor.py` will extract the three contigs (all small plasmids) highlighted in blue:
-<p align="center"><picture><source srcset="images/short-read_example-dark.png" media="(prefers-color-scheme: dark)"><img src="images/short-read_example.png" alt="Short-read assembly graph example" width="50%"></picture></p>
+* [Example assembly graphs](#example-assembly-graphs)
+* [Long-read assembly graph example](#long-read-assembly-graph-example)
+* [Important note](#important-note)
+* [Requirements](#requirements)
+* [Installation](#installation)
+* [Method](#method)
+* [Quick usage](#quick-usage)
+* [Full usage](#full-usage)
+* [License](#license)
 
 
 
-## Long-read assembly graph example
+## Example assembly graphs
 
-If given this long-read assembly graph as input, `circular_contig_extractor.py` will extract the 11 contigs (some chromosomes, some plasmids) highlighted in blue:
+### Toy example
+
+This toy assembly graph has nine contigs, three of which would be considered circular by `circular_contig_extractor.py` and six of which would not (prefixed with **c** for 'circular' and **n** for 'not').
+
+```
+S	c1	AATATGAAAGGGTGTTGGGTATTCGCGGGTACACG
+S	c2	TCATTTCTTCAA
+S	c3	TGTGA
+S	n1	TCTTGCAACTTCATGAGGT
+S	n2	ACATTTTCTTCATGGG
+S	n3	GAAAGAGGCG
+S	n4	ACGTGCTTGGGACCTAGCCAATGAT
+S	n5	TACCA
+S	n6	CTGTC
+L	c1	+	c1	+	0M
+L	c2	-	c2	-	0M
+L	c3	+	c3	+	0M
+L	c3	-	c3	-	0M
+L	n2	+	n3	+	0M
+L	n3	+	n2	+	0M
+L	n4	+	n4	+	0M
+L	n4	+	n5	+	0M
+L	n6	+	n6	+	0M
+L	n6	+	n6	-	0M
+```
+
+<p align="center"><picture><source srcset="images/toy_example-dark.png" media="(prefers-color-scheme: dark)"><img src="images/toy_example.png" alt="Toy assembly graph example" width="60%"></picture></p>
+
+
+
+### Short-read example
+
+Given this short-read assembly graph as input, `circular_contig_extractor.py` will extract the three contigs (all small plasmids) highlighted in blue:
+<p align="center"><picture><source srcset="images/short-read_example-dark.png" media="(prefers-color-scheme: dark)"><img src="images/short-read_example.png" alt="Short-read assembly graph example" width="45%"></picture></p>
+
+
+
+### Long-read example
+
+Given this long-read plate-sweep assembly graph as input, `circular_contig_extractor.py` will extract the 11 contigs (some chromosomes, some plasmids) highlighted in blue:
 <p align="center"><picture><source srcset="images/long-read_example-dark.png" media="(prefers-color-scheme: dark)"><img src="images/long-read_example.png" alt="Long-read assembly graph example" width="60%"></picture></p>
 
 
