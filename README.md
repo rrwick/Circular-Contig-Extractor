@@ -7,7 +7,6 @@ This repo contains a Python script ([`circular_contig_extractor.py`](circular_co
 ## Table of contents
 
 * [Example assembly graphs](#example-assembly-graphs)
-* [Long-read assembly graph example](#long-read-assembly-graph-example)
 * [Important note](#important-note)
 * [Requirements](#requirements)
 * [Installation](#installation)
@@ -27,7 +26,7 @@ This toy assembly graph has nine contigs, three of which `circular_contig_extrac
 <p align="center"><picture><source srcset="images/toy_example-dark.png" media="(prefers-color-scheme: dark)"><img src="images/toy_example.png" alt="Toy assembly graph example" width="60%"></picture></p>
 
 <details>
-<summary><b>GFA input</b></summary>
+<summary>GFA input</summary>
 <figure>
 <pre>
 <code>S	c1	AATATGAAAGGGTGTTGGGTATTCGCGGGTACACG
@@ -55,7 +54,7 @@ L	n6	+	n6	-	0M</code>
 
 
 <details>
-<summary><b>FASTA output</b></summary>
+<summary>FASTA output</summary>
 <figure>
 <pre>
 <code>>c1
@@ -77,6 +76,7 @@ As you can see in the GFA, circularising links can be on the positive strand (c1
 Given this short-read bacterial genome assembly graph as input, `circular_contig_extractor.py` will extract the three contigs (all small plasmids) highlighted in blue:
 <p align="center"><picture><source srcset="images/short-read_example-dark.png" media="(prefers-color-scheme: dark)"><img src="images/short-read_example.png" alt="Short-read assembly graph example" width="45%"></picture></p>
 
+In a short-read bacterial genome assembly graph, most (but not all) small plasmids will assemble to circular contigs. Conversely, most (but not all) large plasmids will fail to assemble to circular contigs. This example has a large plasmid at the bottom-left made of six non-circular contigs.
 
 
 ### Long-read example
@@ -88,7 +88,7 @@ Given this long-read plate-sweep assembly graph as input, `circular_contig_extra
 
 ## Important note
 
-When using `circular_contig_extractor.py` to look for chromosomes or plasmids, false-negative results are common! Sometimes replicons do not cleanly assemble into separate circular contigs, and this script will ignore anything that is not separate and circular. For example, if you are using it to extract small plasmids and get no result, this does not mean that the input genome definitely has no small plasmids.
+When using `circular_contig_extractor.py` to look for chromosomes or plasmids, false-negative results are common! Sometimes replicons do not cleanly assemble into separate circular contigs, and this script will ignore anything that is not separate and circular. For example, if you are using it to extract small plasmids and get no result, this does not necessarily mean that the input genome has no small plasmids.
 
 
 
