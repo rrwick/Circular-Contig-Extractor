@@ -64,13 +64,11 @@ def test_compression_type_4():
 def test_help_1():
     with pytest.raises(SystemExit) as sysexit:
         circular_contig_extractor.main(['--help'])
-        assert sysexit.code == 0
 
 
 def test_help_2():
     with pytest.raises(SystemExit) as sysexit:
         circular_contig_extractor.main([])
-        assert sysexit.code == 1
 
 
 def test_check_args():

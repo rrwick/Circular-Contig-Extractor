@@ -57,26 +57,26 @@ def get_arguments(args):
                             help="Show program's version number and exit")
 
     args = parser.parse_args(args)
+    check_args(args)
     return args
 
 
 def main(args=None):
     args = get_arguments(args)
-    check_args(args)
     contigs, links = load_gfa(args.input_gfa)
     contigs = find_circular_contigs(contigs, links)
+    quit_if_no_contigs_left(contigs)
+    contigs = trim_overlaps(contigs)
+    contigs = filter_by_size(contigs, args.min, args.max)
+    quit_if_no_contigs_left(contigs)
+    contigs = filter_by_query(contigs, args.query, args.mash)
+    quit_if_no_contigs_left(contigs)
+    output_contigs(contigs)
+
+
+def quit_if_no_contigs_left(contigs):
     if not contigs:
         sys.exit()
-    contigs = trim_overlaps(contigs)
-    if args.min is not None or args.max is not None:
-        contigs = filter_by_size(contigs, args.min, args.max)
-        if not contigs:
-            sys.exit()
-    if args.query is not None:
-        contigs = filter_by_query(contigs, args.query, args.mash)
-        if not contigs:
-            sys.exit()
-    output_contigs(contigs)
 
 
 def check_args(args):
@@ -95,7 +95,6 @@ def check_args(args):
         query_seqs = list(iterate_fasta(args.query))
         if not query_seqs:
             sys.exit(f'Error: {args.query} contains no sequences')
-
 
 
 def load_gfa(filename):
@@ -151,10 +150,7 @@ def trim_overlaps(contigs):
 
 def get_overlap_from_cigar(cigar):
     match = re.match(r'^(\d+)M$', cigar)
-    if match:
-        return int(match.group(1))
-    else:
-        return None
+    return int(match.group(1)) if match else None
 
 
 def trim_seq(seq, trim_amount):
@@ -165,6 +161,8 @@ def trim_seq(seq, trim_amount):
 
 
 def filter_by_size(contigs, min_size, max_size):
+    if min_size is None and max_size is None:
+        return contigs
     print(f'\nFiltering by size:', file=sys.stderr)
     if min_size is not None:
         contigs = [s for s in contigs if len(s[1]) >= min_size]
@@ -178,16 +176,18 @@ def filter_by_size(contigs, min_size, max_size):
 
 
 def filter_by_query(contigs, query_filename, mash_threshold):
+    if query_filename is None:
+        return contigs
     print(f'\nFiltering by query sequence(s):', file=sys.stderr)
     mash_distances = get_all_mash_distances(contigs, query_filename)
     closest_distances = {contig_name: sorted(distances)[0]
                          for contig_name, distances in mash_distances.items()}
     matching_contigs = []
     for name, seq in contigs:
-        closest_distance, closest_query = closest_distances[name]
-        if closest_distance <= mash_threshold:
+        closest_dist, closest_query = closest_distances[name]
+        if closest_dist <= mash_threshold:
             matching_contigs.append((name, seq))
-            print(f'  {name}: {closest_distance:.5f} Mash distance to {closest_query}', file=sys.stderr)
+            print(f'  {name}: {closest_dist:.5f} Mash distance to {closest_query}', file=sys.stderr)
     if not matching_contigs:
         print('  no contigs match query sequence(s)\n', file=sys.stderr)
     return matching_contigs
@@ -232,8 +232,7 @@ def output_contigs(contigs):
     print(f'\nOutputting contigs:', file=sys.stderr)
     for name, seq in contigs:
         print(f'  {name}: {len(seq):,} bp', file=sys.stderr)
-        print(f'>{name}')
-        print(seq)
+        print(f'>{name}\n{seq}')
     print('', file=sys.stderr)
 
 
