@@ -191,3 +191,11 @@ def test_get_mash_distance():
     assert circular_contig_extractor.get_mash_distance(fasta, fasta) == 0.0
     with pytest.raises(SystemExit):
         assert circular_contig_extractor.get_mash_distance(empty, empty)
+
+
+def test_write_fasta():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        fasta = pathlib.Path(temp_dir) / 'temp.fasta'
+        circular_contig_extractor.write_fasta('a', 'ACGACTACGATC', fasta)
+        result = list(circular_contig_extractor.iterate_fasta(fasta))
+        assert result == [('a', 'ACGACTACGATC')]
