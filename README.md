@@ -135,7 +135,7 @@ If you'd like to double-check that everything works as intended, you can run thi
 
 ## Quick usage
 
-`circular_contig_extractor.py` take a [GFA file](https://gfa-spec.github.io/GFA-spec/GFA1.html) as input, such as those made by [SPAdes](https://github.com/ablab/spades) or [Unicycler](https://github.com/rrwick/Unicycler). It outputs to stdout in FASTA format.
+`circular_contig_extractor.py` takes a [GFA file](https://gfa-spec.github.io/GFA-spec/GFA1.html) as input, such as those made by [SPAdes](https://github.com/ablab/spades) or [Unicycler](https://github.com/rrwick/Unicycler). It outputs to stdout in FASTA format.
 
 Get all circular contigs from an assembly graph:
 ```
